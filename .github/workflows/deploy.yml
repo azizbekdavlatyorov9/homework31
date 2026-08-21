@@ -10,12 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Repository'ni GitHub Actions runner'ga yuklash
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Serverga SSH orqali ulanish va deploy
-      - name: Deploy to server
+      - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -30,11 +28,12 @@ jobs:
 
             echo "🚀 Deployment started..."
 
-            APP_DIR="/ci_cd"
+            APP_DIR="/home/ubuntu/ci_cd"
 
             # ==========================================
-            # 1. Project papkasini yaratish
+            # 1. Project directory
             # ==========================================
+
             if [ ! -d "$APP_DIR" ]; then
               echo "📁 Creating project directory..."
               mkdir -p "$APP_DIR"
@@ -43,13 +42,11 @@ jobs:
             cd "$APP_DIR"
 
             # ==========================================
-            # 2. Repository'ni clone qilish yoki update
+            # 2. Clone or update repository
             # ==========================================
+
             if [ ! -d ".git" ]; then
               echo "📥 Cloning repository..."
-
-              rm -rf "$APP_DIR"/*
-              rm -rf "$APP_DIR"/.[!.]* "$APP_DIR"/..?* 2>/dev/null || true
 
               git clone https://github.com/azizbekdavlatyorov9/homework31.git "$APP_DIR"
 
@@ -63,38 +60,43 @@ jobs:
             fi
 
             # ==========================================
-            # 3. Git tekshirish
+            # 3. Check repository
             # ==========================================
+
             if [ ! -d ".git" ]; then
-              echo "❌ Git repository not found!"
+              echo "❌ Repository not found!"
               exit 1
             fi
 
             echo "✅ Repository is ready"
 
             # ==========================================
-            # 4. Node.js tekshirish
+            # 4. Node.js
             # ==========================================
+
             echo "🔍 Checking Node.js..."
 
             node -v
             npm -v
 
             # ==========================================
-            # 5. PM2 tekshirish
+            # 5. PM2
             # ==========================================
+
             echo "🔍 Checking PM2..."
 
             if ! command -v pm2 >/dev/null 2>&1; then
               echo "📦 PM2 not found. Installing..."
+
               sudo npm install -g pm2
             fi
 
             pm2 -v
 
             # ==========================================
-            # 6. Environment variables
+            # 6. Create .env
             # ==========================================
+
             echo "⚙️ Creating .env..."
 
             cat > .env << EOF
@@ -102,45 +104,54 @@ jobs:
             EOF
 
             # ==========================================
-            # 7. Dependencies
+            # 7. Install dependencies
             # ==========================================
+
             echo "📦 Installing dependencies..."
 
             npm install
 
             # ==========================================
-            # 8. Build
+            # 8. Build application
             # ==========================================
+
             echo "🔨 Building application..."
 
             npm run build
 
             # ==========================================
-            # 9. PM2 application
+            # 9. Start / Restart PM2
             # ==========================================
+
             echo "🚀 Starting application..."
 
             if pm2 describe ci_cd_app >/dev/null 2>&1; then
+
               echo "🔄 Restarting existing application..."
 
               pm2 restart ci_cd_app --update-env
+
             else
+
               echo "🆕 Starting new application..."
 
               pm2 start dist/main.js \
                 --name ci_cd_app \
                 --update-env
+
             fi
 
             # ==========================================
-            # 10. PM2 save
+            # 10. Save PM2
             # ==========================================
+
             pm2 save
 
             # ==========================================
-            # 11. Status
+            # 11. Show status
             # ==========================================
-            echo "📊 Application status:"
+
+            echo "📊 Application status..."
 
             pm2 status
 
