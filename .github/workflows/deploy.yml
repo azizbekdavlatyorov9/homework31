@@ -13,24 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-        shell: bash
-
-      - name: Deploy to server
-        env:
-          HOST: ${{ secrets.HOST }}
-          USER: ${{ secrets.USERNAME }}
-          APP_DIR: /ci_cd
-          PORT: ${{ secrets.PORT }}
-        run: |
-          ssh $USER@$HOST << EOF
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: PORT
+          script: |
             set -e
 
+            APP_DIR="/ci_cd"
+            
             if [ ! -d "$APP_DIR" ]; then
               mkdir -p "$APP_DIR"
               git clone https://github.com/azizbekdavlatyorov9/homework31.git "$APP_DIR"
@@ -45,7 +39,11 @@ jobs:
 
             git pull origin main
 
-            echo "PORT=$PORT" > .env
+            echo "PORT=${{ secrets.PORT }}" > .env
+            
+            # Nodejs va PM2 path'larini to'g'ri topish uchun
+            export PATH=$PATH:/usr/bin:/usr/local/bin:~/.nvm/versions/node/$(node -v)/bin
+
             npm install
             npm run build
 
@@ -56,4 +54,3 @@ jobs:
             fi
 
             pm2 save
-          EOF
